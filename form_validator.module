@@ -130,7 +130,7 @@ function form_validator_register_validate($form, &$form_state){
       ->fields('fv', array('fid'))
       ->execute();
   $record = $result->fetchObject();
-  if($record->fid == '') {
+  if($record == '') {
 		form_set_error('fname', t('No entry in database!'));
 	}
 }
