@@ -1,0 +1,7 @@
+name = form validator
+description = module extends drupal and alows admin to import data into drupal database in .csv file extension in administration section of module.
+Than data can be validated by using form on the front page.
+package = drupal form data validator
+core = 7.x
+version = "7.x-1.0"
+configure = admin/settings/form_validator

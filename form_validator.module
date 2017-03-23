@@ -1,0 +1,139 @@
+<?php
+/*
+ * A module that displays the validation form.
+ * Aleksandar Simonovic http://aleksandarsimonovic.in.rs/
+ */
+function form_validator_help($path, $arg){
+	switch ($path) {
+		case "admin/help#form_validator":
+	return '<p>' . t("Module extends drupal and alows admin to import data into drupal database in .csv file extension in administration section of module.
+Than data can be validated by using form on the front page.") . '</p>';
+		  break;
+	}
+}
+
+function form_validator_admin() {
+  $form = array('#attributes' => array('enctype' => "multipart/form-data"),);
+  $form['file'] = array(
+    '#type' => 'file',
+    '#title' => t('Import .csv file'),
+    '#description' => t('Upload file, allowed extension: .csv'),
+	
+  );
+  return system_settings_form($form);
+}
+function form_validator_admin_validate($form, &$form_state) {
+  // $file_directory_path = $file_directory_path.'/test';
+
+  $file = file_save_upload('file', array(
+    'file_validate_extensions' => array('csv'),FILE_EXISTS_REPLACE
+  ));
+  if ($file) {
+    if ($file = file_move($file, 'public://csv.csv', FILE_EXISTS_REPLACE)) {
+      $form_state['values']['file'] = $file;
+    }
+    else {
+      form_set_error('file', t('Unsuccesfull file upload on site directory.'));
+    }
+  }
+  else {
+    form_set_error('file', t('File not uploaded.'));
+  }
+  
+  	$file = fopen(variable_get('file_directory_path', conf_path() . '/files/csv.csv'),"r");
+    while (!feof($file) ) {
+      $fields[] = fgetcsv($file, 1024);
+    }
+  	//$fields[] = fgetcsv($file, 1024);
+    $fields = array_filter($fields);
+    //first empty table
+    $result = db_truncate('form_validator')->execute();
+	if(count($fields) > 0){
+      foreach ($fields as $key => $value) {
+        //insert data into for_validator table
+        $data = array(
+          'fname' => $value[0],
+          'lname' => $value[1],
+          'birthday' => $value[2],
+        );
+        drupal_write_record('form_validator', $data);
+      }
+	}else{
+		form_set_error('file', t('Wrong .csv format.'));
+	}
+	fclose($file);
+}
+function form_validator_admin_submit($form, $form_state) {
+  drupal_set_message(t('Data succesfully updated.'));
+}
+function form_validator_menu() {
+  $items = array();
+  $items['admin/settings/form_validator'] = array(
+    'title' => 'Form Validator Settings',
+    'description' => 'Upload .csv file to update database table.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('form_validator_admin'),
+    'access arguments' => array('administer form_validator settings'),
+    'type' => MENU_NORMAL_ITEM,
+   );
+   $items['form_validator'] = array(
+    'title' => 'Validation Form',
+	'description' => 'Form validation',
+    'page arguments' => array('form_validator_register'),
+	'page callback' => 'drupal_get_form',
+    'access callback' => TRUE,
+    'expanded' => TRUE,
+	'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+//display front end content
+function form_validator_register() {
+  $form = array();
+  $form['form_validator_fname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('First Name'),
+    '#size' => 25,
+    '#required' => TRUE,
+  );
+  $form['form_validator_lname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last Name'),
+    '#size' => 25,
+    '#required' => TRUE,
+  );
+  $form['form_validator_birthday'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Birth date'),
+    '#size' => 25,
+    '#description' => t("Entry format: (DD/MM/YYYY)"),
+    '#required' => TRUE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+
+  return $form;
+}
+function form_validator_register_validate($form, &$form_state){
+	$fname = $form_state['values']['form_validator_fname'];
+	$lname = $form_state['values']['form_validator_lname'];
+	$birthday = $form_state['values']['form_validator_birthday'];
+	
+	//read form_validator table
+	$result = db_select('form_validator', 'fv')
+            ->condition('fv.fname', $fname, '=')
+            ->condition('fv.lname', $lname, '=')
+            ->condition('fv.birthday', $birthday, '=')
+      ->fields('fv', array('fid'))
+      ->execute();
+  $record = $result->fetchObject();
+  if($record->fid == '') {
+		form_set_error('fname', t('No entry in database!'));
+	}
+}
+function form_validator_register_submit($form, $form_state) {
+  drupal_set_message(t('Entry exists in database.'));
+}
